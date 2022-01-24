@@ -43,12 +43,13 @@ func main() {
     req.Header.Add("authorization", "token api_key:access_token")
     
     // Add etag to request header
-    req.Header = cacheClient.AddEtag("GET", req.Header, url)
+    req = cacheClient.AddEtag(req)
+    
     res, _ := http.DefaultClient.Do(req)
     defer res.Body.Close()
     
     // Store and fetch response/cache data
-    response := cacheClient.WriteReadCache(res, url)
+    response := cacheClient.HandleCache(res, url)
     fmt.Println(response)
 }
 ```

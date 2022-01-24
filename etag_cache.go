@@ -6,16 +6,47 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"path/filepath"
 )
 
+// ClientParam represent input cache dir path from user
+type ClientParam struct {
+	DirPath string
+}
+
+// Client represents interface for etag cache
+type Client struct {
+	dirPath   string
+	etagPath  string
+	cachePath string
+}
+
+// Creates new cache client
+func New(userParam ClientParam) *Client {
+	// Set default dir path
+	if userParam.DirPath == "" {
+		userParam.DirPath = "./goapp"
+	}
+	// Set etag file path
+	etagPath := filepath.Join(userParam.DirPath, "/etag.gob")
+	// Set cache file path
+	cachePath := filepath.Join(userParam.DirPath, "/cache.gob")
+
+	return &Client{
+		dirPath:   userParam.DirPath,
+		etagPath:  etagPath,
+		cachePath: cachePath,
+	}
+}
+
 // AddEtag adds etag to request header
-func (c *Client) AddEtag(method string, headers http.Header, url string) http.Header {
-	if method == "GET" && c.exists(c.etagPath) {
+func (c *Client) AddEtag(req *http.Request) *http.Request {
+	if req.Method == "GET" && c.exists(c.etagPath) {
 		etagResult := c.readFile(c.etagPath)
 		// Add etag to request header
-		headers.Add("If-None-Match", etagResult[url])
+		req.Header.Add("If-None-Match", etagResult[req.URL.String()])
 	}
-	return headers
+	return req
 }
 
 // SaveEtag stores Etag data to etag.gob file
@@ -29,6 +60,7 @@ func (c *Client) SaveEtag(headers http.Header, url string) {
 			// Create client directory if it doesn't exists
 			os.Mkdir(c.dirPath, os.ModePerm)
 		}
+		// update etag
 		etag[url] = headers["Etag"][0]
 		err := c.writeFile(c.etagPath, etag)
 		if err != nil {
@@ -37,8 +69,8 @@ func (c *Client) SaveEtag(headers http.Header, url string) {
 	}
 }
 
-// WriteReadCache write/update and return response/cache data based on HTTP status code
-func (c *Client) WriteReadCache(res *http.Response, url string) string {
+// HandleCache write/update and return response/cache data based on HTTP status code
+func (c *Client) HandleCache(res *http.Response, url string) string {
 	var response = make(map[string]string)
 	// save etag from response header
 	c.SaveEtag(res.Header, url)
