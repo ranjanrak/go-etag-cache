@@ -24,7 +24,7 @@ type Client struct {
 // RequestParam represents input http request params
 type RequestParam struct {
 	ReqClient *http.Request
-	headers   map[string]string
+	Headers   map[string]string
 }
 
 // Creates new cache client
@@ -49,7 +49,7 @@ func New(userParam ClientParam) *Client {
 func (c *Client) AddEtag(reqParam RequestParam) *http.Request {
 	req := reqParam.ReqClient
 	// Add all headers to http request
-	for name, value := range reqParam.headers {
+	for name, value := range reqParam.Headers {
 		req.Header.Add(name, value)
 	}
 

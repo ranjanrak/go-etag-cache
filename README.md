@@ -38,26 +38,26 @@ import (
 
 func main() {
     // Create new cache instance
-	cacheClient := New(ClientParam{DirPath: ""})
-	url := "https://api.kite.trade/orders"
+    cacheClient := etagcache.New(etagcache.ClientParam{DirPath: ""})
+    url := "https://api.kite.trade/orders"
 
-	req, _ := http.NewRequest("GET", url, nil)
+    req, _ := http.NewRequest("GET", url, nil)
 
-	// HTTP request params
-	reqParam := RequestParam{
-		ReqClient: req,
-		headers: map[string]string{
-			"User-Agent":     "gokiteconnect/4.0.2",
-			"x-kite-version": "3",
-			"authorization":  "token api_key:access_token",
-		},
-	}
-	// Store and fetch response/cache data
-	response, err := cacheClient.HandleEtagCache(reqParam, url)
-	if err != nil {
-		fmt.Printf("Error: %v", err)
-	}
-	fmt.Println(response)
+    // HTTP request params
+    reqParam := etagcache.RequestParam{
+        ReqClient: req,
+        Headers: map[string]string{
+            "User-Agent":     "gokiteconnect/4.0.2",
+            "x-kite-version": "3",
+            "authorization":  "token api_key:access_token",
+        },
+    }
+    // Store and fetch response/cache data
+    response, err := cacheClient.HandleEtagCache(reqParam, url)
+    if err != nil {
+        fmt.Printf("Error: %v", err)
+    }
+    fmt.Println(response)
 }
 ```
 
@@ -77,4 +77,10 @@ Close:false Uncompressed:false Trailer:map[] Request:0xc000108000 TLS:0xc00030e9
 07:18:35","exchange_update_timestamp":null,"exchange_timestamp":null,"variety":"amo","exchange":"NSE",
 "tradingsymbol":"BHEL","instrument_token":112129,"order_type":"MARKET","transaction_type":"BUY",
 "validity":"DAY","product":"CNC","quantity":1,"disclosed_quantity":0,...}
+```
+
+### Run unit tests
+
+```
+go test -v
 ```

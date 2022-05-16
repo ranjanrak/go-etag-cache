@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestAddEtag(t *testing.T) {
+func TestHandleEtagCache(t *testing.T) {
 	// Create http mock
 	httpmock.Activate()
 	defer httpmock.DeactivateAndReset()
@@ -32,7 +32,7 @@ func TestAddEtag(t *testing.T) {
 	// HTTP request params
 	reqParam := RequestParam{
 		ReqClient: req,
-		headers: map[string]string{
+		Headers: map[string]string{
 			"User-Agent":     "gokiteconnect/4.0.2",
 			"x-kite-version": "3",
 			"authorization":  "token api_key:access_token",
