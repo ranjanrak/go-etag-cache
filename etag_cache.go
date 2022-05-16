@@ -2,8 +2,8 @@ package etagcache
 
 import (
 	"encoding/gob"
-	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -19,6 +19,12 @@ type Client struct {
 	dirPath   string
 	etagPath  string
 	cachePath string
+}
+
+// RequestParam represents input http request params
+type RequestParam struct {
+	ReqClient *http.Request
+	headers   map[string]string
 }
 
 // Creates new cache client
@@ -40,7 +46,13 @@ func New(userParam ClientParam) *Client {
 }
 
 // AddEtag adds etag to request header
-func (c *Client) AddEtag(req *http.Request) *http.Request {
+func (c *Client) AddEtag(reqParam RequestParam) *http.Request {
+	req := reqParam.ReqClient
+	// Add all headers to http request
+	for name, value := range reqParam.headers {
+		req.Header.Add(name, value)
+	}
+
 	if req.Method == "GET" && c.exists(c.etagPath) {
 		etagResult := c.readFile(c.etagPath)
 		// Add etag to request header
@@ -52,26 +64,31 @@ func (c *Client) AddEtag(req *http.Request) *http.Request {
 // SaveEtag stores Etag data to etag.gob file
 func (c *Client) SaveEtag(headers http.Header, url string) {
 	var etag = make(map[string]string)
+	if c.exists(c.etagPath) {
+		// If older etag file exists update the etag value
+		etag = c.readFile(c.etagPath)
+	} else {
+		// Create client directory if it doesn't exists
+		os.Mkdir(c.dirPath, os.ModePerm)
+	}
 	if len(headers["Etag"]) > 0 {
-		if c.exists(c.etagPath) {
-			// If exists update the etag value
-			etag = c.readFile(c.etagPath)
-		} else {
-			// Create client directory if it doesn't exists
-			os.Mkdir(c.dirPath, os.ModePerm)
-		}
 		// update etag
 		etag[url] = headers["Etag"][0]
 		err := c.writeFile(c.etagPath, etag)
 		if err != nil {
-			fmt.Println(err)
+			log.Println(err)
 		}
 	}
 }
 
 // HandleCache write/update and return response/cache data based on HTTP status code
-func (c *Client) HandleCache(res *http.Response, url string) string {
+func (c *Client) HandleEtagCache(reqParam RequestParam, url string) (string, error) {
 	var response = make(map[string]string)
+	// add etag to request header
+	req := c.AddEtag(reqParam)
+	res, _ := http.DefaultClient.Do(req)
+	defer res.Body.Close()
+
 	// save etag from response header
 	c.SaveEtag(res.Header, url)
 	if res.StatusCode == 304 {
@@ -88,10 +105,7 @@ func (c *Client) HandleCache(res *http.Response, url string) string {
 	}
 	// update the cache file with new response
 	err := c.writeFile(c.cachePath, response)
-	if err != nil {
-		fmt.Println(err)
-	}
-	return response[url]
+	return response[url], err
 }
 
 // readFile decodes gob encoded data from .gob file
@@ -99,7 +113,7 @@ func (c *Client) readFile(filePath string) map[string]string {
 	var fileOutput map[string]string
 	file, err := os.Open(filePath)
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 	} else {
 		decoder := gob.NewDecoder(file)
 		err = decoder.Decode(&fileOutput)
